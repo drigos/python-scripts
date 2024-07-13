@@ -5,7 +5,6 @@ import os
 from tqdm import tqdm
 
 # ToDo: avaliar API Gateway e CloudFront
-# ToDo: ignorar ELBs com tag especificada
 
 parser = argparse.ArgumentParser(description='Set AWS SSO profiles from a CSV file.')
 parser.add_argument('--input-file', default='workspace/aws_profiles.csv', help='Input CSV file. Default is aws_profiles.csv.')
@@ -51,6 +50,10 @@ def get_elbv2_info(wafv2_client, elbv2_client, profile_info):
 
     elb_info_list = []
     for elb in tqdm(elbs_v2):
+        tags_response = elbv2_client.describe_tags(ResourceArns=[elb['LoadBalancerArn']])
+        tags = tags_response['TagDescriptions'][0]['Tags']
+        waf_ignore = any(tag['Key'] == 'et:waf-ignore' for tag in tags)
+
         elb_info = {
             'sso_session': profile_info['sso_session'],
             'profile_name': profile_info['profile_name'],
@@ -59,7 +62,8 @@ def get_elbv2_info(wafv2_client, elbv2_client, profile_info):
             'version': 'v2',
             'type': elb['Type'],
             'scheme': elb['Scheme'],
-            'associated_web_acl': 'None'
+            'associated_web_acl': 'None',
+            'marked_to_ignore': waf_ignore
         }
 
         response = {}
@@ -90,7 +94,8 @@ def get_elbv1_info(elb_client, profile_info):
             'version': 'v1',
             'type': 'classic',
             'scheme': elb['Scheme'],
-            'associated_web_acl': 'N/A'  # Classic ELBs não suportam associação direta com WebACLs
+            'associated_web_acl': 'N/A',
+            'marked_to_ignore': False
         }
 
         elb_info_list.append(elb_info)
