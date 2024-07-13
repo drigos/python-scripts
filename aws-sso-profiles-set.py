@@ -1,6 +1,7 @@
 import argparse
 import configparser
 import csv
+import os
 
 parser = argparse.ArgumentParser(description='Set AWS SSO profiles from a CSV file.')
 parser.add_argument('--sso-role-name', required=True, help='SSO role name to be set for each profile.')
@@ -11,8 +12,8 @@ parser.add_argument('--output-file', default='workspace/aws.config', help='Outpu
 
 args = parser.parse_args()
 
-input_csv_filepath = args.input_file
-aws_config_filepath = args.output_file
+input_csv_filepath = os.path.expanduser(args.input_file)
+aws_config_filepath = os.path.expanduser(args.output_file)
 
 config = configparser.ConfigParser()
 

@@ -1,10 +1,21 @@
+import argparse
 import boto3
 import csv
+import os
 from tqdm import tqdm
 
-# ToDo: receber arquivo de input como argumento na CLI
 # ToDo: avaliar API Gateway e CloudFront
 # ToDo: ignorar ELBs com tag especificada
+
+parser = argparse.ArgumentParser(description='Set AWS SSO profiles from a CSV file.')
+parser.add_argument('--input-file', default='workspace/aws_profiles.csv', help='Input CSV file. Default is aws_profiles.csv.')
+parser.add_argument('--output-file', default='workspace/waf_coverage.csv', help='Output CSV file. Default is waf_coverage.csv.')
+
+args = parser.parse_args()
+
+input_csv_filepath = os.path.expanduser(args.input_file)
+output_csv_filepath = os.path.expanduser(args.output_file)
+
 
 def read_profiles_from_csv(csv_filepath):
     profiles = []
@@ -105,9 +116,9 @@ def scan_waf_coverage_for_profiles_from_csv(csv_filepath):
 
 
 if __name__ == '__main__':
-    waf_coverage = scan_waf_coverage_for_profiles_from_csv('workspace/aws_profiles.csv')
+    waf_coverage = scan_waf_coverage_for_profiles_from_csv(input_csv_filepath)
 
-    with open('workspace/waf_coverage.csv', mode='w', newline='') as file:
+    with open(output_csv_filepath, mode='w', newline='') as file:
         fieldnames = waf_coverage[0].keys()
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
