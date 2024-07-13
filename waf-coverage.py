@@ -2,16 +2,9 @@ import boto3
 import csv
 from tqdm import tqdm
 
-wafv2_client = boto3.client('wafv2')
-elbv2_client = boto3.client('elbv2')
-elb_client = boto3.client('elb')
-
 # ToDo: receber arquivo de input como argumento na CLI
 # ToDo: avaliar API Gateway e CloudFront
 # ToDo: ignorar ELBs com tag especificada
-
-#web_acls = wafv2_client.list_web_acls(Scope='REGIONAL')['WebACLs']
-
 
 def read_profiles_from_csv(csv_filepath):
     profiles = []
@@ -68,7 +61,6 @@ def get_elbv2_info(wafv2_client, elbv2_client, profile_info):
         if 'WebACL' in response:
             elb_info['associated_web_acl'] = response['WebACL']['Name']
 
-        print(elb_info)
         elb_info_list.append(elb_info)
 
     return elb_info_list
@@ -90,7 +82,6 @@ def get_elbv1_info(elb_client, profile_info):
             'associated_web_acl': 'N/A'  # Classic ELBs não suportam associação direta com WebACLs
         }
 
-        print(elb_info)
         elb_info_list.append(elb_info)
 
     return elb_info_list
@@ -115,11 +106,9 @@ def scan_waf_coverage_for_profiles_from_csv(csv_filepath):
 
 if __name__ == '__main__':
     waf_coverage = scan_waf_coverage_for_profiles_from_csv('workspace/aws_profiles.csv')
-    for elb in waf_coverage:
-        print(elb)
-    # elbsv2_info = get_elbv2_info(wafv2_client, elbv2_client)
-    # for elb in elbsv2_info:
-    #     print(elb)
-    # elbsv1_info = get_elbv1_info(elb_client)
-    # for elb in elbsv1_info:
-    #     print(elb)
+
+    with open('workspace/waf_coverage.csv', mode='w', newline='') as file:
+        fieldnames = waf_coverage[0].keys()
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(waf_coverage)
