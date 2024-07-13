@@ -16,7 +16,7 @@ config = configparser.ConfigParser()
 config.read(aws_config_filepath)
 
 with open(output_csv_filepath, mode='w', newline='') as file:
-    writer = csv.writer(file)
+    writer = csv.writer(file, quoting=csv.QUOTE_ALL)
     writer.writerow(['sso_session', 'profile_name', 'account_id'])
 
     for section in config.sections():
