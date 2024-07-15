@@ -4,7 +4,9 @@ import csv
 import os
 from tqdm import tqdm
 
-# ToDo: avaliar API Gateway
+# TODO: suporte a tag 'et:waf-ignore' para CloudFront
+# TODO: suporte a tag 'et:waf-ignore' para API Gateway
+# TODO: criar coluna específica para versão do WAF associado (alterar '<WAF_CLASSIC>' para o nome da WebACL)
 
 parser = argparse.ArgumentParser(description='Set AWS SSO profiles from a CSV file.')
 parser.add_argument('--input-file', default='workspace/aws_profiles.csv', help='Input CSV file. Default is aws_profiles.csv.')
@@ -176,7 +178,7 @@ def get_cloudfront_info(cloudfront_client, profile_info):
     return cloudfront_info_list
 
 
-def get_api_gateway_v2_info(apigwv2_client, wafv2_client, profile_info):
+def get_api_gateway_v2_info(apigwv2_client, profile_info):
     api_gateways = get_all_api_gateways_v2(apigwv2_client)
     region_name = apigwv2_client.meta.region_name
 
@@ -205,7 +207,7 @@ def get_api_gateway_v2_info(apigwv2_client, wafv2_client, profile_info):
     return api_gateway_info_list
 
 
-def get_api_gateway_v1_info(apigw_client, wafv2_client, profile_info):
+def get_api_gateway_v1_info(apigw_client, wafv2_client, waf_regional_client, profile_info):
     api_gateways = get_all_api_gateways_v1(apigw_client)
     region_name = apigw_client.meta.region_name
 
@@ -231,8 +233,19 @@ def get_api_gateway_v1_info(apigw_client, wafv2_client, profile_info):
             }
 
             response = wafv2_client.get_web_acl_for_resource(ResourceArn=stage_arn)
+
             if 'WebACL' in response:
                 stage_info['associated_waf'] = response['WebACL']['Name']
+                api_gateway_info_list.append(stage_info)
+                continue
+
+            response = waf_regional_client.get_web_acl_for_resource(ResourceArn=stage_arn)
+
+            if 'WebACLSummary' in response:
+                # stage_info['associated_waf'] = response['WebACLSummary']['Name']
+                stage_info['associated_waf'] = '<WAF_CLASSIC>'
+                api_gateway_info_list.append(stage_info)
+                continue
 
             api_gateway_info_list.append(stage_info)
 
@@ -259,8 +272,8 @@ def scan_waf_coverage_for_profiles_from_csv(csv_filepath):
         elb_info_list.extend(get_elbv2_info(elbv2_client, wafv2_client, waf_regional_client, profile_info))
         elb_info_list.extend(get_elbv1_info(elb_client, profile_info))
         cloudfront_info_list.extend(get_cloudfront_info(cloudfront_client, profile_info))
-        apigw_info_list.extend(get_api_gateway_v2_info(apigwv2_client, wafv2_client, profile_info))
-        apigw_info_list.extend(get_api_gateway_v1_info(apigw_client, wafv2_client, profile_info))
+        apigw_info_list.extend(get_api_gateway_v2_info(apigwv2_client, profile_info))
+        apigw_info_list.extend(get_api_gateway_v1_info(apigw_client, wafv2_client, waf_regional_client, profile_info))
 
     return { 'elb': elb_info_list, 'cloudfront': cloudfront_info_list, 'apigw': apigw_info_list }
 
