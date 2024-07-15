@@ -6,7 +6,6 @@ from tqdm import tqdm
 
 # TODO: suporte a tag 'et:waf-ignore' para CloudFront
 # TODO: suporte a tag 'et:waf-ignore' para API Gateway
-# TODO: criar coluna específica para versão do WAF associado (alterar '<WAF_CLASSIC>' para o nome da WebACL)
 
 parser = argparse.ArgumentParser(description='Set AWS SSO profiles from a CSV file.')
 parser.add_argument('--input-file', default='workspace/aws_profiles.csv', help='Input CSV file. Default is aws_profiles.csv.')
@@ -103,6 +102,7 @@ def get_elbv2_info(elbv2_client, wafv2_client, waf_regional_client, profile_info
             'type': elb['Type'],
             'scheme': elb['Scheme'],
             'associated_waf': 'None',
+            'waf_version': 'None',
             'marked_as_waf_ignore': waf_ignore
         }
 
@@ -110,6 +110,7 @@ def get_elbv2_info(elbv2_client, wafv2_client, waf_regional_client, profile_info
 
         if elb['Type'] == 'network':
             elb_info['associated_waf'] = 'N/A'
+            elb_info['waf_version'] = 'N/A'
             elb_info_list.append(elb_info)
             continue
 
@@ -118,14 +119,15 @@ def get_elbv2_info(elbv2_client, wafv2_client, waf_regional_client, profile_info
 
             if 'WebACL' in response:
                 elb_info['associated_waf'] = response['WebACL']['Name']
+                elb_info['waf_version'] = 'v2'
                 elb_info_list.append(elb_info)
                 continue
 
             response = waf_regional_client.get_web_acl_for_resource(ResourceArn=elb['LoadBalancerArn'])
 
             if 'WebACLSummary' in response:
-                # elb_info['associated_waf'] = response['WebACLSummary']['Name']
-                elb_info['associated_waf'] = '<WAF_CLASSIC>'
+                elb_info['associated_waf'] = response['WebACLSummary']['Name']
+                elb_info['waf_version'] = 'v1'
                 elb_info_list.append(elb_info)
                 continue
 
@@ -147,6 +149,7 @@ def get_elbv1_info(elb_client, profile_info):
             'type': 'classic',
             'scheme': elb['Scheme'],
             'associated_waf': 'N/A',
+            'waf_version': 'N/A',
             'marked_as_waf_ignore': False
         }
 
@@ -155,22 +158,33 @@ def get_elbv1_info(elb_client, profile_info):
     return elb_info_list
 
 
-def get_cloudfront_info(cloudfront_client, profile_info):
+def get_cloudfront_info(cloudfront_client, waf_global_client, profile_info):
     distributions = get_all_cloudfront_distributions(cloudfront_client)
 
     cloudfront_info_list = []
     for dist in tqdm(distributions, desc='CloudFront Distribution'):
         distribution_name = dist['Aliases']['Items'][0] if dist['Aliases']['Quantity'] > 0 else dist['DomainName']
-        associated_waf = dist['WebACLId'] if dist['WebACLId'] != '' else 'None'
-        if associated_waf != 'None':
-            associated_waf = associated_waf.split('/')[-2] if len(associated_waf.split('/')) > 1 else '<WAF_CLASSIC>'
+        web_acl_name = dist['WebACLId'] if dist['WebACLId'] != '' else 'None'
+        waf_version = 'None'
+
+        if web_acl_name != 'None':
+            web_acl_name_segments = web_acl_name.split('/')
+
+            if len(web_acl_name_segments) > 1:
+                web_acl_name = web_acl_name_segments[-2]
+                waf_version = 'v2'
+            else:
+                response = waf_global_client.get_web_acl(WebACLId=web_acl_name)
+                web_acl_name = response['WebACL']['Name']
+                waf_version = 'v1'
 
         basic_info = generate_basic_info(profile_info)
         cloudfront_info = {
             **basic_info,
             'distribution_id': dist['Id'],
             'distribution_name': distribution_name,
-            'associated_waf': associated_waf
+            'associated_waf': web_acl_name,
+            'waf_version': waf_version
         }
 
         cloudfront_info_list.append(cloudfront_info)
@@ -199,7 +213,8 @@ def get_api_gateway_v2_info(apigwv2_client, profile_info):
             stage_info = {
                 **api_gateway_info,
                 'stage_name': stage['StageName'],
-                'associated_waf': 'N/A'
+                'associated_waf': 'N/A',
+                'waf_version': 'N/A'
             }
 
             api_gateway_info_list.append(stage_info)
@@ -229,21 +244,23 @@ def get_api_gateway_v1_info(apigw_client, wafv2_client, waf_regional_client, pro
             stage_info = {
                 **api_gateway_info,
                 'stage_name': stage['stageName'],
-                'associated_waf': 'None'
+                'associated_waf': 'None',
+                'waf_version': 'None'
             }
 
             response = wafv2_client.get_web_acl_for_resource(ResourceArn=stage_arn)
 
             if 'WebACL' in response:
                 stage_info['associated_waf'] = response['WebACL']['Name']
+                stage_info['waf_version'] = 'v2'
                 api_gateway_info_list.append(stage_info)
                 continue
 
             response = waf_regional_client.get_web_acl_for_resource(ResourceArn=stage_arn)
 
             if 'WebACLSummary' in response:
-                # stage_info['associated_waf'] = response['WebACLSummary']['Name']
-                stage_info['associated_waf'] = '<WAF_CLASSIC>'
+                stage_info['associated_waf'] = response['WebACLSummary']['Name']
+                stage_info['waf_version'] = 'v1'
                 api_gateway_info_list.append(stage_info)
                 continue
 
@@ -262,6 +279,7 @@ def scan_waf_coverage_for_profiles_from_csv(csv_filepath):
         session = boto3.Session(profile_name=profile_info['profile_name'])
         wafv2_client = session.client('wafv2')
         waf_regional_client = session.client('waf-regional')
+        waf_global_client = session.client('waf')
         elbv2_client = session.client('elbv2')
         elb_client = session.client('elb')
         cloudfront_client = session.client('cloudfront')
@@ -271,7 +289,7 @@ def scan_waf_coverage_for_profiles_from_csv(csv_filepath):
         print(f"Scanning profile: {profile_info['profile_name']}")
         elb_info_list.extend(get_elbv2_info(elbv2_client, wafv2_client, waf_regional_client, profile_info))
         elb_info_list.extend(get_elbv1_info(elb_client, profile_info))
-        cloudfront_info_list.extend(get_cloudfront_info(cloudfront_client, profile_info))
+        cloudfront_info_list.extend(get_cloudfront_info(cloudfront_client, waf_global_client, profile_info))
         apigw_info_list.extend(get_api_gateway_v2_info(apigwv2_client, profile_info))
         apigw_info_list.extend(get_api_gateway_v1_info(apigw_client, wafv2_client, waf_regional_client, profile_info))
 
