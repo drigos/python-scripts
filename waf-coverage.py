@@ -140,7 +140,8 @@ def get_cloudfront_info(cloudfront_client, profile_info):
     for dist in tqdm(distributions, desc='CloudFront Distribution'):
         distribution_name = dist['Aliases']['Items'][0] if dist['Aliases']['Quantity'] > 0 else dist['DomainName']
         associated_waf = dist['WebACLId'] if dist['WebACLId'] != '' else 'None'
-        associated_waf = associated_waf.split('/')[-2] if len(associated_waf.split('/')) > 1 else '<WAF_CLASSIC>'
+        if associated_waf != 'None':
+            associated_waf = associated_waf.split('/')[-2] if len(associated_waf.split('/')) > 1 else '<WAF_CLASSIC>'
 
         cloudfront_info = {
             'sso_session': profile_info['sso_session'],
