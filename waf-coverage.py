@@ -60,7 +60,7 @@ def get_elbv2_info(elbv2_client, wafv2_client, profile_info):
     elbs_v2 = get_all_elbv2_load_balancers(elbv2_client)
 
     elb_info_list = []
-    for elb in tqdm(elbs_v2):
+    for elb in tqdm(elbs_v2, desc='ELB v2'):
         tags_response = elbv2_client.describe_tags(ResourceArns=[elb['LoadBalancerArn']])
         tags = tags_response['TagDescriptions'][0]['Tags']
         waf_ignore = any(tag['Key'] == 'et:waf-ignore' for tag in tags)
@@ -96,7 +96,7 @@ def get_elbv1_info(elb_client, profile_info):
     elbs_v1 = get_all_elbv1_load_balancers(elb_client)
 
     elb_info_list = []
-    for elb in tqdm(elbs_v1):
+    for elb in tqdm(elbs_v1, desc='ELB Classic'):
         elb_info = {
             'sso_session': profile_info['sso_session'],
             'profile_name': profile_info['profile_name'],
@@ -118,9 +118,10 @@ def get_cloudfront_info(cloudfront_client, wafv2_client, profile_info):
     distributions = get_all_cloudfront_distributions(cloudfront_client)
 
     cloudfront_info_list = []
-    for dist in tqdm(distributions):
+    for dist in tqdm(distributions, desc='CloudFront Distributions'):
         distribution_name = dist['Aliases']['Items'][0] if dist['Aliases']['Quantity'] > 0 else dist['DomainName']
-        associated_waf = dist['WebACLId'].split('/')[-2] if dist['WebACLId'] != '' else 'None'
+        associated_waf = dist['WebACLId'] if dist['WebACLId'] != '' else 'None'
+        associated_waf = associated_waf.split('/')[-2] if len(associated_waf.split('/')) > 1 else '<WAF_CLASSIC>'
 
         cloudfront_info = {
             'sso_session': profile_info['sso_session'],
