@@ -32,6 +32,15 @@ def read_profiles_from_csv(csv_filepath):
     return profiles
 
 
+def generate_basic_info(profile_info):
+    return {
+        'sso_session': profile_info['sso_session'],
+        'profile_prefix': profile_info['profile_name'].split('-')[0],
+        'profile_name': profile_info['profile_name'],
+        'account_id': profile_info['account_id']
+    }
+
+
 def get_all_elbv2_load_balancers(elbv2_client, page_size=400):
     elbs_v2 = []
     paginator = elbv2_client.get_paginator('describe_load_balancers')
@@ -84,10 +93,9 @@ def get_elbv2_info(elbv2_client, wafv2_client, profile_info):
         tags = tags_response['TagDescriptions'][0]['Tags']
         waf_ignore = any(tag['Key'] == 'et:waf-ignore' for tag in tags)
 
+        basic_info = generate_basic_info(profile_info)
         elb_info = {
-            'sso_session': profile_info['sso_session'],
-            'profile_name': profile_info['profile_name'],
-            'account_id': profile_info['account_id'],
+            **basic_info,
             'name': elb['LoadBalancerName'],
             'version': 'v2',
             'type': elb['Type'],
@@ -116,10 +124,9 @@ def get_elbv1_info(elb_client, profile_info):
 
     elb_info_list = []
     for elb in tqdm(elbs_v1, desc='ELB Classic'):
+        basic_info = generate_basic_info(profile_info)
         elb_info = {
-            'sso_session': profile_info['sso_session'],
-            'profile_name': profile_info['profile_name'],
-            'account_id': profile_info['account_id'],
+            **basic_info,
             'name': elb['LoadBalancerName'],
             'version': 'v1',
             'type': 'classic',
@@ -143,10 +150,9 @@ def get_cloudfront_info(cloudfront_client, profile_info):
         if associated_waf != 'None':
             associated_waf = associated_waf.split('/')[-2] if len(associated_waf.split('/')) > 1 else '<WAF_CLASSIC>'
 
+        basic_info = generate_basic_info(profile_info)
         cloudfront_info = {
-            'sso_session': profile_info['sso_session'],
-            'profile_name': profile_info['profile_name'],
-            'account_id': profile_info['account_id'],
+            **basic_info,
             'distribution_id': dist['Id'],
             'distribution_name': distribution_name,
             'associated_waf': associated_waf
@@ -163,10 +169,9 @@ def get_api_gateway_v2_info(apigwv2_client, wafv2_client, profile_info):
 
     api_gateway_info_list = []
     for api_gateway in tqdm(api_gateways, desc='API Gateway v2'):
+        basic_info = generate_basic_info(profile_info)
         api_gateway_info = {
-            'sso_session': profile_info['sso_session'],
-            'profile_name': profile_info['profile_name'],
-            'account_id': profile_info['account_id'],
+            **basic_info,
             'api_gateway_id': api_gateway['ApiId'],
             'api_gateway_name': api_gateway['Name'],
             'protocol': api_gateway['ProtocolType'],
@@ -193,10 +198,9 @@ def get_api_gateway_v1_info(apigw_client, wafv2_client, profile_info):
 
     api_gateway_info_list = []
     for api_gateway in tqdm(api_gateways, desc='API Gateway v1'):
+        basic_info = generate_basic_info(profile_info)
         api_gateway_info = {
-            'sso_session': profile_info['sso_session'],
-            'profile_name': profile_info['profile_name'],
-            'account_id': profile_info['account_id'],
+            **basic_info,
             'api_gateway_id': api_gateway['id'],
             'api_gateway_name': api_gateway['name'],
             'protocol': 'REST',
