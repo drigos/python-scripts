@@ -84,7 +84,7 @@ def get_all_api_gateways_v1(apigw_client):
     return api_gateways
 
 
-def get_elbv2_info(elbv2_client, wafv2_client, profile_info):
+def get_elbv2_info(elbv2_client, wafv2_client, waf_regional_client, profile_info):
     elbs_v2 = get_all_elbv2_load_balancers(elbv2_client)
 
     elb_info_list = []
@@ -108,11 +108,24 @@ def get_elbv2_info(elbv2_client, wafv2_client, profile_info):
 
         if elb['Type'] == 'network':
             elb_info['associated_waf'] = 'N/A'
-        elif elb['Type'] == 'application':
+            elb_info_list.append(elb_info)
+            continue
+
+        if elb['Type'] == 'application':
             response = wafv2_client.get_web_acl_for_resource(ResourceArn=elb['LoadBalancerArn'])
 
-        if 'WebACL' in response:
-            elb_info['associated_waf'] = response['WebACL']['Name']
+            if 'WebACL' in response:
+                elb_info['associated_waf'] = response['WebACL']['Name']
+                elb_info_list.append(elb_info)
+                continue
+
+            response = waf_regional_client.get_web_acl_for_resource(ResourceArn=elb['LoadBalancerArn'])
+
+            if 'WebACLSummary' in response:
+                # elb_info['associated_waf'] = response['WebACLSummary']['Name']
+                elb_info['associated_waf'] = '<WAF_CLASSIC>'
+                elb_info_list.append(elb_info)
+                continue
 
         elb_info_list.append(elb_info)
 
@@ -235,6 +248,7 @@ def scan_waf_coverage_for_profiles_from_csv(csv_filepath):
     for profile_info in profiles:
         session = boto3.Session(profile_name=profile_info['profile_name'])
         wafv2_client = session.client('wafv2')
+        waf_regional_client = session.client('waf-regional')
         elbv2_client = session.client('elbv2')
         elb_client = session.client('elb')
         cloudfront_client = session.client('cloudfront')
@@ -242,7 +256,7 @@ def scan_waf_coverage_for_profiles_from_csv(csv_filepath):
         apigw_client = session.client('apigateway')
 
         print(f"Scanning profile: {profile_info['profile_name']}")
-        elb_info_list.extend(get_elbv2_info(elbv2_client, wafv2_client, profile_info))
+        elb_info_list.extend(get_elbv2_info(elbv2_client, wafv2_client, waf_regional_client, profile_info))
         elb_info_list.extend(get_elbv1_info(elb_client, profile_info))
         cloudfront_info_list.extend(get_cloudfront_info(cloudfront_client, profile_info))
         apigw_info_list.extend(get_api_gateway_v2_info(apigwv2_client, wafv2_client, profile_info))
