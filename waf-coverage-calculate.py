@@ -5,16 +5,16 @@ from collections import defaultdict
 from tabulate import tabulate
 
 parser = argparse.ArgumentParser(description='Set AWS SSO profiles from a CSV file.')
-parser.add_argument('--input-file', default='workspace/waf_coverage.csv', help='Input CSV file. Default is aws_profiles.csv.')
+parser.add_argument('--input-file', default='workspace/waf-coverage.csv', help='Input CSV file. Default is waf-coverage.csv.')
 parser.add_argument('--debug', action='store_true', help='Print debug table.')
 
 args = parser.parse_args()
 
 input_csv_filepath = os.path.expanduser(args.input_file)
 input_file_path, input_file_extension = os.path.splitext(args.input_file)
-elb_csv_filepath = os.path.expanduser(f'{input_file_path}_for_elb{input_file_extension}')
-cloudfront_csv_filepath = os.path.expanduser(f'{input_file_path}_for_cloudfront{input_file_extension}')
-apigw_csv_filepath = os.path.expanduser(f'{input_file_path}_for_apigw{input_file_extension}')
+elb_csv_filepath = os.path.expanduser(f'{input_file_path}-for-elb{input_file_extension}')
+cloudfront_csv_filepath = os.path.expanduser(f'{input_file_path}-for-cloudfront{input_file_extension}')
+apigw_csv_filepath = os.path.expanduser(f'{input_file_path}-for-apigw{input_file_extension}')
 
 
 def calculate_waf_coverage(resources):

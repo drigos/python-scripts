@@ -7,7 +7,7 @@ parser = argparse.ArgumentParser(description='Set AWS SSO profiles from a CSV fi
 parser.add_argument('--sso-role-name', required=True, help='SSO role name to be set for each profile.')
 parser.add_argument('--region', default='us-east-1', help='Default AWS region. Default is us-east-1.')
 parser.add_argument('--output', default='json', help='Default output format. Default is json.')
-parser.add_argument('--input-file', default='workspace/aws_profiles.csv', help='Input CSV file. Default is aws_profiles.csv.')
+parser.add_argument('--input-file', default='workspace/aws-profiles.csv', help='Input CSV file. Default is aws-profiles.csv.')
 parser.add_argument('--output-file', default='workspace/aws.config', help='Output AWS config file. Default is aws.config.')
 
 args = parser.parse_args()

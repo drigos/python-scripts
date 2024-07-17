@@ -8,16 +8,16 @@ from tqdm import tqdm
 # TODO: suporte a tag 'et:waf-ignore' para API Gateway
 
 parser = argparse.ArgumentParser(description='Set AWS SSO profiles from a CSV file.')
-parser.add_argument('--input-file', default='workspace/aws_profiles.csv', help='Input CSV file. Default is aws_profiles.csv.')
-parser.add_argument('--output-file', default='workspace/waf_coverage.csv', help='Output CSV file. Default is waf_coverage.csv.')
+parser.add_argument('--input-file', default='workspace/aws-profiles.csv', help='Input CSV file. Default is aws-profiles.csv.')
+parser.add_argument('--output-file', default='workspace/waf-coverage.csv', help='Output CSV file. Default is waf-coverage.csv.')
 
 args = parser.parse_args()
 
 input_csv_filepath = os.path.expanduser(args.input_file)
 output_file_path, output_file_extension = os.path.splitext(args.output_file)
-elb_csv_filepath = os.path.expanduser(f'{output_file_path}_for_elb{output_file_extension}')
-cloudfront_csv_filepath = os.path.expanduser(f'{output_file_path}_for_cloudfront{output_file_extension}')
-apigw_csv_filepath = os.path.expanduser(f'{output_file_path}_for_apigw{output_file_extension}')
+elb_csv_filepath = os.path.expanduser(f'{output_file_path}-for-elb{output_file_extension}')
+cloudfront_csv_filepath = os.path.expanduser(f'{output_file_path}-for-cloudfront{output_file_extension}')
+apigw_csv_filepath = os.path.expanduser(f'{output_file_path}-for-apigw{output_file_extension}')
 
 
 def read_profiles_from_csv(csv_filepath):

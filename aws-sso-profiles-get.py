@@ -5,7 +5,7 @@ import os
 
 parser = argparse.ArgumentParser(description='Set AWS SSO profiles from a CSV file.')
 parser.add_argument('--input-file', default='~/.aws/config', help='Input AWS config file. Default is ~/.aws/config.')
-parser.add_argument('--output-file', default='workspace/aws_profiles.csv', help='Output CSV file. Default is aws_profiles.csv.')
+parser.add_argument('--output-file', default='workspace/aws-profiles.csv', help='Output CSV file. Default is aws-profiles.csv.')
 
 args = parser.parse_args()
 
